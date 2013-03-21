@@ -1,6 +1,6 @@
 # Content-Type parsing
 
-## MediaType(type, [parameters])
+## new MediaType(type, [parameters])
 
 The MediaType represents a parsed Media Type. For use in HTTP, the first (but only the first) `q` parameter will be parsed as a float.
 Other parameters are available through the `params` object.
@@ -21,7 +21,7 @@ q.q = 1;
 q.toString() === 'application/json;q=1;profile="http://example.com/schema.json"';
 ```
 
-## parseMedia
+## parseMedia(type)
 Returns a new instance of MediaType.
 
 ## splitQuotedString(str, delimiter, quote)

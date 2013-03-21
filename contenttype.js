@@ -5,7 +5,7 @@ function MediaType(s, p){
 	this.type = '';
 	this.params = {};
 	if(typeof s=='string'){
-		var c = splitQS(s);
+		var c = splitQuotedString(s);
 		this.type = c.shift();
 		for(var i=0; i<c.length; i++){
 			this.parseParameter(c[i]);
@@ -16,7 +16,7 @@ function MediaType(s, p){
 		for(var n in s.params) this.params[n]=s.params[n];
 	}
 	if(typeof p=='string'){	 
-		var c = splitQS(p);
+		var c = splitQuotedString(p);
 		for(var i=0; i<c.length; i++){
 			this.parseParameter(c[i]);
 		}
@@ -91,7 +91,7 @@ exports.splitQuotedString = splitQuotedString;
 // Split a list of content types found in an Accept header
 // Maybe use it like: splitContentTypes(request.headers.accept).map(parseMedia)
 function splitContentTypes(str){
-	return splitQS(str, ',');
+	return splitQuotedString(str, ',');
 }
 exports.splitContentTypes = splitContentTypes;
 
