@@ -1,0 +1,1 @@
+contenttype.js
