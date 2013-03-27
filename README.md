@@ -13,7 +13,7 @@ var p = new MediaType('text/html;level=1;q=0.5');
 p.q === 0.5;
 p.params.level === "1"
 
-var q = new MediaType('application/json', 'profile="http://example.com/schema.json"');
+var q = new MediaType('application/json', {profile: 'http://example.com/schema.json'});
 q.type === "application/json";
 q.params.profile === "http://example.com/schema.json";
 
@@ -36,7 +36,7 @@ splitContentType('application/json, text/html').map(parseMedia)
 ```
 
 ## select(reps, accept)
-Pick an ideal representation to send given an Array of representations to choose from and the client-preferred list as an Array.
+Pick an ideal representation to send, given an Array of representations to choose from, and the client-preferred list as an Array.
 
 See example.js for an example.
 
@@ -48,6 +48,8 @@ If a is a superset of b (b is smaller than a), return 1.
 If b is a superset of a, return -1.
 If they are the exact same, return 0.
 If they are disjoint, return null.
+
+The q-value, if any, is ignored.
 
 ```javascript
 mediaCmp(parseMedia('text/html'), parseMedia('text/html')) === 0
