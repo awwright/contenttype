@@ -40,8 +40,11 @@ MediaType.prototype.parseParameter = function parseParameter(s){
 	}
 }
 MediaType.prototype.toString = function toString(){
-	var str = this.type + ';q='+this.q;
-	for(var n in this.params){
+	var str = this.type;
+	if(this.q!==undefined) str += ';q='+this.q;
+	var params = Object.keys(this.params).sort();
+	for(var i=0; i<params.length; i++){
+		var n = params[i];
 		str += ';'+n+'=';
 		if(this.params[n].match(/["=;<>\[\]\(\) ,\-]/)){
 			str += '"' + this.params[n].replace(/["\\]/g, function(a){return '\\'+a;}) + '"';
