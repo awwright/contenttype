@@ -1,6 +1,6 @@
 {
   "name": "content-type",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Javascript/ECMAScript library for parsing Content-Type and Media/MIME type strings",
   "main": "content-type.js",
   "scripts": {
