@@ -1,5 +1,7 @@
 # Content-Type parsing
 
+*note: forked from [here](https://github.com/Acubed/contenttype)*
+
 ## new MediaType(type, [parameters])
 
 The MediaType represents a parsed Media Type. For use in HTTP, the first (but only the first) `q` parameter will be parsed as a float.
