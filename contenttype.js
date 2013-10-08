@@ -247,10 +247,10 @@ var mediaCmp = MediaType.mediaCmp = function mediaCmp(a, b) {
     }
 
     if (!ap[n] && bp[n]) {
-      if(dir > 0) {
+      if (dir > 0) {
         return null;
       } else {
-        dir =-1;
+        dir =- 1;
       }
     }
   }
