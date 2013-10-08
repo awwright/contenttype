@@ -2,7 +2,7 @@
   "name": "content-type",
   "version": "0.0.0",
   "description": "Javascript/ECMAScript library for parsing Content-Type and Media/MIME type strings",
-  "main": "contenttype.js",
+  "main": "content-type.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

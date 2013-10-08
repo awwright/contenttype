@@ -1,4 +1,4 @@
-var MediaType = require('./contenttype');
+var MediaType = require('./content-type');
 
 var representations = [
   'application/json',
