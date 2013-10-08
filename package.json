@@ -1,0 +1,24 @@
+{
+  "name": "content-type",
+  "version": "0.0.0",
+  "description": "Javascript/ECMAScript library for parsing Content-Type and Media/MIME type strings",
+  "main": "contenttype.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/deoxxa/content-type.git"
+  },
+  "keywords": [
+    "content-type",
+    "parse",
+    "http",
+    "header"
+  ],
+  "author": "Acubed <https://github.com/Acubed>",
+  "license": "Unlicense <http://unlicense.org/>",
+  "bugs": {
+    "url": "https://github.com/deoxxa/content-type/issues"
+  }
+}
