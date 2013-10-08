@@ -81,7 +81,7 @@ MediaType.prototype.toString = function toString() {
   }
   if (typeof this.q === 'number' && this.q >= 0) {
     var q = Math.min(this.q, 1).toFixed(3).replace(/0*$/, '').replace(/\.$/, '');
-    str += ';q=' + q;
+    str += '; q=' + q;
   }
 
   return str;
