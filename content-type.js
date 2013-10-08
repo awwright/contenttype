@@ -53,7 +53,7 @@ MediaType.prototype.parseParameter = function parseParameter(s){
   if (name === "q"){
     this.q = parseFloat(value);
   } else {
-    if (value[0] === '"' && value[value.length - 1] === '"'){
+    if (value[0] === '"' && value[value.length - 1] === '"') {
       value = value.substr(1, value.length - 2).replace(/\\(.)/g, function(a, b) {
         return b;
       });
