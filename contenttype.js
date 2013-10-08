@@ -150,46 +150,58 @@ var splitContentTypes = MediaType.splitContentTypes = function splitContentTypes
 };
 
 var parseMedia = MediaType.parseMedia = function parseMedia(str){
-  var o = new MediaType(str);
-
-  if (typeof o.q === "undefined") {
-    o.q = 1;
-  }
-
-  return o;
+  return new MediaType(str);
 };
 
-// Pick an ideal representation to send given a list of representations
-// to choose from and the client-preferred list
-var select = MediaType.select = function select(reps, accept) {
-  var cr = {q: 0},
-      ca = {q: 0},
-      cq = 0;
+var sortByQuality = MediaType.sortByQuality = function sortByQuality(types) {
+  return types.sort(function(a, b) {
+    if (a.q === b.q) {
+      return 0;
+    }
 
-  for (var i=0;i<reps.length;++i) {
-    var r = reps[i];
-    var rq = r.q || 1;
+    if (typeof a.q === "undefined" && typeof b.q !== "undefined") {
+      return -1;
+    }
 
-    for (var j=0;j<accept.length;++j){
-      var a=accept[j];
-      var aq = a.q || 1;
+    if (typeof b.q === "undefined" && typeof a.q !== "undefined") {
+      return 1;
+    }
 
-      var cmp = mediaCmp(a, r);
+    return a.q > b.q ? -1 : 1;
+  });
+};
 
-      if (cmp !== null && cmp >= 0){
-        if (aq * rq > cq) {
-          ca = a;
-          cr = r;
-          cq = ca.q * cr.q;
-          if (cq===1 && cr.type) {
-            return cr;
-          }
-        }
+var firstMatch = MediaType.firstMatch = function firstMatch(availableTypes, acceptedTypes) {
+  for (var i=0;i<acceptedTypes.length;++i) {
+    for (var j=0;j<availableTypes.length;++j) {
+      var comparison = mediaCmp(acceptedTypes[i], availableTypes[j]);
+
+      if (comparison !== null && comparison >= 0) {
+        return availableTypes[j];
       }
     }
   }
 
-  return cr.type && cr;
+  return null;
+};
+
+// Pick an ideal representation to send given a list of representations
+// to choose from and the client-preferred list
+var select = MediaType.select = function select(availableTypes, acceptedTypes, options) {
+  options = options || {
+    sortAvailable: false,
+    sortAccepted: true,
+  };
+
+  if (options.sortAvailable) {
+    availableTypes = sortByQuality(availableTypes);
+  }
+
+  if (options.sortAccepted) {
+    acceptedTypes = sortByQuality(acceptedTypes);
+  }
+
+  return firstMatch(availableTypes, acceptedTypes);
 };
 
 // Determine if one media type is a subset of another
