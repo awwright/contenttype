@@ -238,7 +238,7 @@ var mediaCmp = MediaType.mediaCmp = function mediaCmp(a, b) {
   var dir = 0;
 
   for (var n in ap) {
-    if (ap[n] && !bp[n]) {
+    if (ap[n] && typeof bp[n] === "undefined") {
       if (dir < 0) {
         return null;
       } else {
@@ -246,12 +246,16 @@ var mediaCmp = MediaType.mediaCmp = function mediaCmp(a, b) {
       }
     }
 
-    if (!ap[n] && bp[n]) {
+    if (bp[n] && typeof ap[n] === "undefined") {
       if (dir > 0) {
         return null;
       } else {
         dir =- 1;
       }
+    }
+
+    if (ap[n] && bp[n] && ap[n] !== bp[n]) {
+      return null;
     }
   }
 
