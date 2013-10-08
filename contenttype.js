@@ -147,7 +147,7 @@ var splitQuotedString = MediaType.splitQuotedString = function splitQuotedString
 // Maybe use it like: splitContentTypes(request.headers.accept).map(parseMedia)
 var splitContentTypes = MediaType.splitContentTypes = function splitContentTypes(str){
   return splitQuotedString(str, ",");
-};;
+};
 
 var parseMedia = MediaType.parseMedia = function parseMedia(str){
   var o = new MediaType(str);
@@ -157,7 +157,7 @@ var parseMedia = MediaType.parseMedia = function parseMedia(str){
   }
 
   return o;
-};;
+};
 
 // Pick an ideal representation to send given a list of representations
 // to choose from and the client-preferred list
@@ -190,7 +190,7 @@ var select = MediaType.select = function select(reps, accept) {
   }
 
   return cr.type && cr;
-};;
+};
 
 // Determine if one media type is a subset of another
 // If a is a superset of b (b is smaller than a), return 1
@@ -256,4 +256,4 @@ var mediaCmp = MediaType.mediaCmp = function mediaCmp(a, b) {
   }
 
   return dir;
-};;
+};
