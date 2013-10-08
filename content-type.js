@@ -171,6 +171,42 @@ var sortByQuality = MediaType.sortByQuality = function sortByQuality(types) {
   });
 };
 
+var sortBySpecificity = MediaType.sortBySpecificity = function sortBySpecificity(types) {
+  return types.sort(function(a, b) {
+    var bitsA = a.type.split("/"),
+        bitsB = b.type.split("/");
+
+    if (bitsA[0] === "*" && bitsB[0] !== "*") {
+      return 1;
+    }
+
+    if (bitsB[0] === "*" && bitsA[0] !== "*") {
+      return -1;
+    }
+
+    if (bitsA[1] === "*" && bitsB[1] !== "*") {
+      return 1;
+    }
+
+    if (bitsB[1] === "*" && bitsA[1] !== "*") {
+      return -1;
+    }
+
+    var keysA = Object.keys(a.params),
+        keysB = Object.keys(b.params);
+
+    if (keysA.length < keysB.length) {
+      return 1;
+    }
+
+    if (keysB.length < keysA.length) {
+      return -1;
+    }
+
+    return 0;
+  });
+};
+
 var firstMatch = MediaType.firstMatch = function firstMatch(availableTypes, acceptedTypes) {
   for (var i=0;i<acceptedTypes.length;++i) {
     for (var j=0;j<availableTypes.length;++j) {
@@ -194,11 +230,11 @@ var select = MediaType.select = function select(availableTypes, acceptedTypes, o
   };
 
   if (options.sortAvailable) {
-    availableTypes = sortByQuality(availableTypes);
+    availableTypes = sortByQuality(sortBySpecificity(availableTypes));
   }
 
   if (options.sortAccepted) {
-    acceptedTypes = sortByQuality(acceptedTypes);
+    acceptedTypes = sortByQuality(sortBySpecificity(acceptedTypes));
   }
 
   return firstMatch(availableTypes, acceptedTypes);
