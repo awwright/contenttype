@@ -41,7 +41,7 @@ MediaType.prototype.parseParameter = function parseParameter(s){
 }
 MediaType.prototype.toString = function toString(){
 	var str = this.type;
-	if(this.q!==undefined) str += ';q='+this.q;
+	if(typeof this.q==='number') str += ';q='+this.q;
 	var params = Object.keys(this.params).sort();
 	for(var i=0; i<params.length; i++){
 		var n = params[i];
