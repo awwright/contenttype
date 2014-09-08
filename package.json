@@ -4,7 +4,7 @@
   "description": "Javascript/ECMAScript library for parsing Content-Type and Media/MIME type strings",
   "main": "content-type.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha -R spec"
   },
   "repository": {
     "type": "git",
@@ -20,5 +20,9 @@
   "license": "Unlicense <http://unlicense.org/>",
   "bugs": {
     "url": "https://github.com/deoxxa/content-type/issues"
+  },
+  "devDependencies": {
+    "mocha": "^1.21.4",
+    "should": "^4.0.4"
   }
 }
