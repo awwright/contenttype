@@ -148,3 +148,7 @@ mediaCmp(parseMedia('*/*'), parseMedia('text/html')) === 1
 mediaCmp(parseMedia('text/html;level=1'), parseMedia('text/html')) === -1
 mediaCmp(parseMedia('application/json;profile="v1.json"'), parseMedia('application/json;profile="v2.json"')) === null
 ```
+
+# Related
+
+ * [media-typer](https://github.com/jshttp/media-typer) - if you need simple RFC 6838 media type parser and formatter.
