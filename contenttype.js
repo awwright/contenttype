@@ -29,7 +29,9 @@ MediaType.prototype.parseParameter = function parseParameter(s){
 	var name = param[0].trim();
 	var value = s.substr(param[0].length+1).trim();
 	if(!value || !name) return;
-	if(name=='q' && this.q===undefined){
+	// TODO Per http://tools.ietf.org/html/rfc7231#section-5.3.2 everything
+	//   after the q-value is accept-ext
+	if(name=='q'){
 		this.q=parseFloat(value);
 	}else{
 		if(value[0]=='"' && value[value.length-1]=='"'){
@@ -41,7 +43,6 @@ MediaType.prototype.parseParameter = function parseParameter(s){
 }
 MediaType.prototype.toString = function toString(){
 	var str = this.type;
-	if(typeof this.q==='number') str += ';q='+this.q;
 	var params = Object.keys(this.params).sort();
 	for(var i=0; i<params.length; i++){
 		var n = params[i];
@@ -51,6 +52,10 @@ MediaType.prototype.toString = function toString(){
 		}else{
 			str += this.params[n];
 		}
+	}
+	if(typeof this.q==='number' && this.q>=0){
+		var q = Math.min(this.q, 1).toFixed(3).replace(/0*$/, '').replace(/\.$/, '');
+		str += ';q=' + q;
 	}
 	return str;
 }
