@@ -47,10 +47,10 @@ MediaType.prototype.toString = function toString(){
 	for(var i=0; i<params.length; i++){
 		var n = params[i];
 		str += ';'+n+'=';
-		if(this.params[n].match(/["=;<>\[\]\(\) ,\-]/)){
-			str += '"' + this.params[n].replace(/["\\]/g, function(a){return '\\'+a;}) + '"';
-		}else{
+		if(this.params[n].match(/^[!#$%&'*+\-.^_`|~0-9a-zA-Z]+$/)){
 			str += this.params[n];
+		}else{
+			str += '"' + this.params[n].replace(/["\\]/g, function(a){return '\\'+a;}) + '"';
 		}
 	}
 	if(typeof this.q==='number' && this.q>=0){

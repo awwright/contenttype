@@ -5,7 +5,9 @@ var splitQuotedString = require('./contenttype').splitQuotedString;
 var representations =
 	[ 'text/html'
 	, 'text/turtle'
+	, 'application/json;q=1;profile="base.json"'
 	, 'application/json;q=1;profile="schema.json?x=y"'
+	, 'application/json;q=1;profile="http://example.com/s.json"'
 	, 'application/json;q=1'
 	, 'text/plain;q=0.2'
 	, 'text/*;q=0.00002' // ABNF limits to three decimal places, this will toString() as "0"
