@@ -74,6 +74,7 @@ MediaType.prototype.toString = function toString() {
 
   for (var i = 0; i < params.length; ++i) {
     var n = params[i];
+    str += "; " + n + "=";
 
     if (this.params[n].match(/^[!#$%&'*+\-.^_`|~0-9a-zA-Z]+$/)) {
       str += this.params[n];
