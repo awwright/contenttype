@@ -1,4 +1,3 @@
-/* eslint-env node */
 // Licence: PUBLIC DOMAIN <http://unlicense.org/>
 // Author: Austin Wright <http://github.com/Acubed>
 
@@ -85,6 +84,7 @@ MediaType.prototype.toString = function toString() {
     }
   }
   if (typeof this.q === 'number' && this.q >= 0) {
+    // q is 1 or less. remove trailing 0's and decimal
     var q = Math.min(this.q, 1).toFixed(3).replace(/0*$/, '').replace(/\.$/, '');
     str += '; q=' + q;
   }
