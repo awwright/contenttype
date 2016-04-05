@@ -1,16 +1,20 @@
+/* eslint-env node */
 // Licence: PUBLIC DOMAIN <http://unlicense.org/>
 // Author: Austin Wright <http://github.com/Acubed>
 
 var MediaType = module.exports = function MediaType(s, p) {
   this.type = "";
   this.params = {};
+  var c,
+      i,
+      n;
 
   if (typeof s === "string") {
-    var c = splitQuotedString(s);
+    c = splitQuotedString(s);
 
     this.type = c.shift();
 
-    for (var i=0;i<c.length;++i) {
+    for (i = 0; i < c.length; ++i) {
       this.parseParameter(c[i]);
     }
   } else if (s instanceof MediaType) {
@@ -18,25 +22,25 @@ var MediaType = module.exports = function MediaType(s, p) {
 
     this.q = s.q;
 
-    for (var n in s.params) {
+    for (n in s.params) {
       this.params[n] = s.params[n];
     }
   }
 
   if (typeof p === "string") {
-    var c = splitQuotedString(p);
+    c = splitQuotedString(p);
 
-    for(var i=0;i<c.length;++i){
+    for (i = 0; i < c.length; ++i) {
       this.parseParameter(c[i]);
     }
   } else if (typeof p === "object") {
-    for (var n in p) {
+    for (n in p) {
       this.params[n] = p[n];
     }
   }
 };
 
-MediaType.prototype.parseParameter = function parseParameter(s){
+MediaType.prototype.parseParameter = function parseParameter(s) {
   var param = s.split("=", 1);
 
   var name = param[0].trim();
@@ -49,12 +53,12 @@ MediaType.prototype.parseParameter = function parseParameter(s){
 
   // TODO Per http://tools.ietf.org/html/rfc7231#section-5.3.2 everything
   //   after the q-value is accept-ext
-  //if (name === "q" && typeof this.q === "undefined"){
-  if (name === "q"){
+  //if (name === "q" && typeof this.q === "undefined") {
+  if (name === "q") {
     this.q = parseFloat(value);
   } else {
     if (value[0] === '"' && value[value.length - 1] === '"') {
-      value = value.substr(1, value.length - 2).replace(/\\(.)/g, function(a, b) {
+      value = value.substr(1, value.length - 2).replace(/\\(.)/g, function replace(a, b) {
         return b;
       });
     }
@@ -68,13 +72,13 @@ MediaType.prototype.toString = function toString() {
 
   var params = Object.keys(this.params).sort();
 
-  for (var i=0;i<params.length;++i) {
+  for (var i = 0; i < params.length; ++i) {
     var n = params[i];
 
     if (this.params[n].match(/^[!#$%&'*+\-.^_`|~0-9a-zA-Z]+$/)) {
       str += this.params[n];
     } else {
-      str += '"' + this.params[n].replace(/["\\]/g, function(a) {
+      str += '"' + this.params[n].replace(/["\\]/g, function replace(a) {
         return '\\' + a;
       }) + '"';
     }
@@ -98,10 +102,16 @@ var splitQuotedString = MediaType.splitQuotedString = function splitQuotedString
   var start = 0;
   var offset = 0;
 
-  var findNextChar = function findNextChar(v, c, i, a){
+  var findNextChar = function findNextChar(v, c, i, a) {
     var p = str.indexOf(c, offset + 1);
 
-    return (p < 0) ? v : Math.min(p, v);
+    var result;
+    if (p < 0) {
+      result = v;
+    } else {
+      result = Math.min(p, v);
+    }
+    return result;
   };
 
   while (offset >= 0) {
@@ -114,26 +124,20 @@ var splitQuotedString = MediaType.splitQuotedString = function splitQuotedString
     switch (str[offset]) {
       case quote:
         // Skip to end of quoted string
-        while(1) {
+        while (1) {
           offset = str.indexOf(quote, offset + 1);
-
           if (offset < 0) {
             break;
           }
-
           if (str[offset - 1] === "\\") {
             continue;
           }
-
           break;
         }
-
         continue;
       case delim:
         res.push(str.substr(start, offset - start).trim());
-
         start = ++offset;
-
         break;
     }
   }
@@ -145,16 +149,16 @@ var splitQuotedString = MediaType.splitQuotedString = function splitQuotedString
 
 // Split a list of content types found in an Accept header
 // Maybe use it like: splitContentTypes(request.headers.accept).map(parseMedia)
-var splitContentTypes = MediaType.splitContentTypes = function splitContentTypes(str){
-  return splitQuotedString(str, ",");
+MediaType.splitContentTypes = function splitContentTypes(str) {
+  return MediaType.splitQuotedString(str, ",");
 };
 
-var parseMedia = MediaType.parseMedia = function parseMedia(str){
+MediaType.parseMedia = function parseMedia(str) {
   return new MediaType(str);
 };
 
-var sortByQuality = MediaType.sortByQuality = function sortByQuality(types) {
-  return types.sort(function(a, b) {
+MediaType.sortByQuality = function sortByQuality(types) {
+  return types.sort(function sort(a, b) {
     if (a.q === b.q) {
       return 0;
     }
@@ -167,12 +171,17 @@ var sortByQuality = MediaType.sortByQuality = function sortByQuality(types) {
       return 1;
     }
 
-    return a.q > b.q ? -1 : 1;
+    if (a.q > b.q) {
+      return 1;
+    } else if (a.q < b.q) {
+      return -1;
+    }
+    return 0;
   });
 };
 
-var sortBySpecificity = MediaType.sortBySpecificity = function sortBySpecificity(types) {
-  return types.sort(function(a, b) {
+MediaType.sortBySpecificity = function sortBySpecificity(types) {
+  return types.sort(function sort(a, b) {
     var bitsA = a.type.split("/"),
         bitsB = b.type.split("/");
 
@@ -207,10 +216,10 @@ var sortBySpecificity = MediaType.sortBySpecificity = function sortBySpecificity
   });
 };
 
-var firstMatch = MediaType.firstMatch = function firstMatch(availableTypes, acceptedTypes) {
-  for (var i=0;i<acceptedTypes.length;++i) {
-    for (var j=0;j<availableTypes.length;++j) {
-      var comparison = mediaCmp(acceptedTypes[i], availableTypes[j]);
+MediaType.firstMatch = function firstMatch(availableTypes, acceptedTypes) {
+  for (var i = 0; i < acceptedTypes.length; ++i) {
+    for (var j = 0; j < availableTypes.length; ++j) {
+      var comparison = MediaType.mediaCmp(acceptedTypes[i], availableTypes[j]);
 
       if (comparison !== null && comparison >= 0) {
         return availableTypes[j];
@@ -223,21 +232,21 @@ var firstMatch = MediaType.firstMatch = function firstMatch(availableTypes, acce
 
 // Pick an ideal representation to send given a list of representations
 // to choose from and the client-preferred list
-var select = MediaType.select = function select(availableTypes, acceptedTypes, options) {
+MediaType.select = function select(availableTypes, acceptedTypes, options) {
   options = options || {
     sortAvailable: false,
-    sortAccepted: true,
+    sortAccepted: true
   };
 
   if (options.sortAvailable) {
-    availableTypes = sortByQuality(sortBySpecificity(availableTypes));
+    availableTypes = MediaType.sortByQuality(MediaType.sortBySpecificity(availableTypes));
   }
 
   if (options.sortAccepted) {
-    acceptedTypes = sortByQuality(sortBySpecificity(acceptedTypes));
+    acceptedTypes = MediaType.sortByQuality(MediaType.sortBySpecificity(acceptedTypes));
   }
 
-  return firstMatch(availableTypes, acceptedTypes);
+  return MediaType.firstMatch(availableTypes, acceptedTypes);
 };
 
 // Determine if one media type is a subset of another
@@ -245,7 +254,7 @@ var select = MediaType.select = function select(availableTypes, acceptedTypes, o
 // If b is a superset of a, return -1
 // If they are the exact same, return 0
 // If they are disjoint, return null
-var mediaCmp = MediaType.mediaCmp = function mediaCmp(a, b) {
+MediaType.mediaCmp = function mediaCmp(a, b) {
   if (a.type === "*/*" && b.type !== "*/*") {
     return 1;
   } else if (a.type !== "*/*" && b.type === "*/*") {
@@ -281,25 +290,21 @@ var mediaCmp = MediaType.mediaCmp = function mediaCmp(a, b) {
     return -1;
   }
 
-  var k = ak.concat(bk).sort();
-
   var dir = 0;
 
   for (var n in ap) {
     if (ap[n] && typeof bp[n] === "undefined") {
       if (dir < 0) {
         return null;
-      } else {
-        dir = 1;
       }
+      dir = 1;
     }
 
     if (bp[n] && typeof ap[n] === "undefined") {
       if (dir > 0) {
         return null;
-      } else {
-        dir =- 1;
       }
+      dir = -1;
     }
 
     if (ap[n] && bp[n] && ap[n] !== bp[n]) {
