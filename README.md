@@ -2,47 +2,142 @@
 
 *note: forked from [here](https://github.com/Acubed/contenttype)*
 
-## new MediaType(type, [parameters])
+## Usage
 
-The MediaType represents a parsed Media Type. For use in HTTP, the first (but only the first) `q` parameter will be parsed as a float.
+Parse
+```
+var MediaType = require('content-type');
+
+var type = MediaType.parseMedia('text/html;q=1');
+console.log(type);
+// MediaType { type: 'text/html', params: {}, q: 1 }
+
+```
+
+Express
+```
+var MediaType = require('content-type');
+var representations = [
+  'application/json',
+  'text/html'
+];
+
+app.use(function (req, res, next) {
+  try {
+    var representation = MediaType.select(representations, req.headers.accept);
+    res.rep = representation;
+  } catch (e) {
+    if (e.name === "UnacceptableError") {
+      res.status(e.statusCode); //406
+      res.json({error: "No valid content-type found for specified Accept header"});
+    } else {
+      throw e;
+    }
+  }
+  next();
+});
+
+app.get('/', function (req, res, next) {
+  res.set("Content-Type", res.rep);
+  if (res.rep === "application/json") {
+    res.json({message: "hello"});
+  } else if (res.rep === "text/html") {
+    res.send("hello");
+  }
+});
+```
+
+#### `new MediaType(type, [parameters])`
+
+The MediaType "class" represents a parsed Media Type. For use in HTTP, the `q` parameter will be parsed as a float.
 Other parameters are available through the `params` object.
-The first argument is the full media type, the second argument, if provided, is strictly a list of parameters.
 
-The `toString` method converts the object back into a Media type.
-
-```javascript
-var p = new MediaType('text/html;level=1;q=0.5');
-p.q === 0.5;
-p.params.level === "1"
-
-var q = new MediaType('application/json', {profile: 'http://example.com/schema.json'});
-q.type === "application/json";
-q.params.profile === "http://example.com/schema.json";
-
-q.q = 1;
-q.toString() === 'application/json;q=1;profile="http://example.com/schema.json"';
+Example
+```
+console.log(new MediaType('text/html;l=3;q=0.7', { p: 4 }));
+// MediaType { type: 'text/html', params: { l: '3', p: '4' }, q: 0.7 }
 ```
 
-## parseMedia(type)
-Returns a new instance of MediaType.
-
-## splitQuotedString(str, delimiter, quote)
-Splits a string by a delimiter character (default: semicolon), ignoring quoted sections (default: double quote).
-
-
-## splitContentTypes(str)
-Splits an Accept (or similar) header into an Array of strings of content-types.
-
-```javascript
-splitContentType('application/json, text/html').map(parseMedia)
+Example
+```
+console.log(new MediaType('text/html;l=3', 'p=4;l=5;q=1'));
+// MediaType { type: 'text/html', params: { l: '5', p: '4' }, q: 1 }
 ```
 
-## select(reps, accept)
-Pick an ideal representation to send, given an Array of representations to choose from, and the client-preferred list as an Array.
+Example
+```
+var type = new MediaType('text/html;l=3', 'p=4;l=5');
+console.log(new MediaType(type, 'p=6;'));
+// MediaType { type: 'text/html', params: { l: '5', p: '6' } }
+```
 
-See example.js for an example.
+#### `toString()`
 
-## mediaCmp(a, b)
+Convert a MediaType object to a string
+
+Example
+```
+var type = new MediaType('text/html;l=3;q=0.5');
+console.log(type.toString());
+// "text/html; l=5; q=0.5"
+```
+
+#### parseMedia(type)
+Parse a media type. Returns a new instance of MediaType.
+
+Example
+```
+var type = MediaType.parseMedia('text/html;l=3');
+console.log(type);
+// MediaType { type: 'text/html', params: { l: '3' } }
+```
+
+
+#### splitQuotedString(str, [delimiter=';'], [quote='"'])
+Splits a string by a delimiter character (default: semicolon), ignoring sections enclosed by quotes (default: double quote).
+
+Example
+```
+var items = MediaType.splitQuotedString("text/html;level=2;q=1");
+console.log(items);
+// [ 'text/html', 'level=2', 'q=1' ]
+```
+
+#### splitContentTypes(str)
+Convenience method for `splitQuotedString(str, ',', '"');`. Splits an Accept (or similar) header into an Array of content-types strings
+
+Example
+```
+var types = MediaType.splitContentTypes("text/html;level=2;q=1,application/json,*/*");
+console.log(types);
+// [ 'text/html;level=2;q=1', 'application/json', '*/*' ]
+```
+
+Example
+```javascript
+var types = MediaType.splitContentTypes('application/json, text/html').map(MediaType.parseMedia);
+console.log(types);
+// [ MediaType { type: 'application/json', params: {} }, MediaType { type: 'text/html', params: {} } ]
+```
+
+#### select(representations, accept)
+Pick an ideal representation to send, given an array of representations (strings or MediaTypes) to choose from, and the client-preferred Accept list (as a string, an array of strings, or an array of MediaTypes). Multiplies client type's quality factor by server type's quality factor
+
+Example
+```javascript
+var representations = [
+  "text/html; q=0.7",
+  "text/plain; q=0.5",
+  "image/jpeg"
+];
+var accept = MediaType.splitContentTypes('text/html;q=0.7, text/plain, */*;q=0.1');
+var selected = (MediaType.select(representations, accept)).toString();
+// text/html gets q=0.49, text/plain gets q=0.5, image/jpeg gets q=0.1
+console.log(selected);
+// "text/plain"
+```
+
+#### mediaCmp(a, b)
 
 Accepts two MediaType instances and tests them for being a subset/superset.
 
@@ -53,6 +148,7 @@ If they are disjoint, return null.
 
 The q-value, if any, is ignored.
 
+Example
 ```javascript
 mediaCmp(parseMedia('text/html'), parseMedia('text/html')) === 0
 mediaCmp(parseMedia('*/*'), parseMedia('text/html')) === 1
