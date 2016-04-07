@@ -1,6 +1,6 @@
 {
-  "name": "content-type",
-  "version": "0.0.1",
+  "name": "contenttype",
+  "version": "2.0.0",
   "description": "Javascript/ECMAScript library for parsing Content-Type and Media/MIME type strings",
   "main": "content-type.js",
   "scripts": {
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/deoxxa/content-type.git"
+    "url": "git://github.com/Acubed/contenttype.git"
   },
   "keywords": [
     "content-type",
@@ -19,7 +19,7 @@
   "author": "Austin Wright <https://github.com/Acubed>",
   "license": "Unlicense <http://unlicense.org/>",
   "bugs": {
-    "url": "https://github.com/deoxxa/content-type/issues"
+    "url": "https://github.com/Acubed/contenttype/issues"
   },
   "devDependencies": {
     "chai": "^3.5.0",

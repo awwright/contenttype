@@ -1,12 +1,10 @@
 # Content-Type parsing
 
-*note: forked from [here](https://github.com/Acubed/contenttype)*
-
 ## Usage
 
 Parse
 ```
-var MediaType = require('content-type');
+var MediaType = require('contenttype');
 
 var type = MediaType.parseMedia('text/html;q=1');
 console.log(type);
@@ -16,7 +14,7 @@ console.log(type);
 
 Express
 ```
-var MediaType = require('content-type');
+var MediaType = require('contenttype');
 var representations = [
   'application/json',
   'text/html'
