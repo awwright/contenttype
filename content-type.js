@@ -1,102 +1,168 @@
 // Licence: PUBLIC DOMAIN <http://unlicense.org/>
 // Author: Austin Wright <http://github.com/Acubed>
-//var typeIs = require('type-is');
 var errors = require('./errors');
 
-var MediaType = module.exports = function MediaType(s, p) {
+/**
+ * Constructor, creates new MediaType
+ *
+ * @example
+ * new MediaType('text/html;l=3', { p: 4 });
+ * // MediaType { type: 'text/html', params: { l: '3', p: 4 } }
+ *
+ * @example
+ * new MediaType('text/html;l=3', 'p=4;l=5');
+ * // MediaType { type: 'text/html', params: { l: '5', p: '4' } }
+ *
+ * @param {string|MediaType} type   Media type
+ * @param {string|object}    params Parameters
+ */
+var MediaType = module.exports = function MediaType(type, params) {
   this.type = "";
   this.params = {};
-  var c,
-      i,
-      n;
+  var stringArray,
+      i;
 
-  if (typeof s === "string") {
-    c = splitQuotedString(s);
-
-    this.type = c.shift();
-
-    for (i = 0; i < c.length; ++i) {
-      this.parseParameter(c[i]);
+  if (typeof type === "string") {
+    // Split by ';', first part is type, the rest are params, or q
+    stringArray = splitQuotedString(type);
+    this.type = stringArray.shift();
+    for (i = 0; i < stringArray.length; ++i) {
+      this.parseParameter(stringArray[i]);
     }
-  } else if (s instanceof MediaType) {
-    this.type = s.type;
-
-    this.q = s.q;
-
-    for (n in s.params) {
-      this.params[n] = s.params[n];
+  } else if (type instanceof MediaType) {
+    this.type = type.type;
+    this.q = type.q;
+    for (i in type.params) {
+      this.params[i] = type.params[i];
     }
   }
 
-  if (typeof p === "string") {
-    c = splitQuotedString(p);
-
-    for (i = 0; i < c.length; ++i) {
-      this.parseParameter(c[i]);
+  // Override parameters (if any) with 2nd arg
+  if (typeof params === "string") {
+    stringArray = splitQuotedString(params);
+    for (i = 0; i < stringArray.length; ++i) {
+      this.parseParameter(stringArray[i]);
     }
-  } else if (typeof p === "object") {
-    for (n in p) {
-      this.params[n] = p[n];
+  } else if (typeof params === "object") {
+    for (i in params) {
+      if (i === "q") {
+        this.q = parseQ(params[i]);
+      } else {
+        this.params[i] = parseParamValue(params[i]);
+      }
     }
   }
+  // TODO always add q?
 };
 
-MediaType.prototype.parseParameter = function parseParameter(s) {
-  var param = s.split("=", 1);
+/**
+ * Parse an Accept or Content-Type string
+ *
+ * @param {string} str Single content type (not comma separated)
+ *
+ * @returns {MediaType}
+ */
+MediaType.parseMedia = function parseMedia(str) {
+  return new MediaType(str);
+};
 
+/**
+ * Parse parameters from a string
+ *
+ * @param {string} string
+ */
+MediaType.prototype.parseParameter = function parseParameter(string) {
+  var param = string.split("=", 1);
   var name = param[0].trim();
-
-  var value = s.substr(param[0].length + 1).trim();
+  var value = string.substr(param[0].length + 1).trim();
 
   if (!value || !name) {
     return;
   }
 
-  // TODO Per http://tools.ietf.org/html/rfc7231#section-5.3.2 everything
-  //   after the q-value is classified as accept-extension
-  //if (name === "q" && typeof this.q === "undefined") {
   if (name === "q") {
-    // Limit q to 3 decimal places, per ABNF
-    this.q = parseFloat(Math.min(parseFloat(value), 1).toFixed(3));
+    this.q = parseQ(value);
   } else {
-    if (value[0] === '"' && value[value.length - 1] === '"') {
-      value = value.substr(1, value.length - 2).replace(/\\(.)/g, function replace(a, b) {
-        return b;
-      });
+    value = parseParamValue(value);
+    // Per http://tools.ietf.org/html/rfc7231#section-5.3.2 everything after
+    // the q-value is classified as accept-extension (ignore for now)
+    if (!this.hasOwnProperty('q')) {
+      this.params[name] = value;
     }
-
-    this.params[name] = value;
   }
 };
 
+/**
+ * Parse parameter value consistently
+ *
+ * @param {string} value
+ *
+ * @returns {string}
+ */
+function parseParamValue(value) {
+  // ?
+  if (value[0] === '"' && value[value.length - 1] === '"') {
+    value = value.substr(1, value.length - 2).replace(/\\(.)/g, function replace(a, b) {
+      return b;
+    });
+  }
+  return value + "";
+}
+
+/**
+ * Ensure q is between 0 and 1. Limit to 3 decimal places, per ABNF
+ *
+ * @param {string|number} q
+ *
+ * @returns {float}
+ */
+function parseQ(q) {
+  var parsed = parseFloat(Math.min(parseFloat(q), 1).toFixed(3));
+  return parsed;
+}
+
+/**
+ * Convert MediaType to its string representation, with alphabetical params
+ *
+ * @returns {string}
+ */
 MediaType.prototype.toString = function toString() {
   var str = this.type;
-
   var params = Object.keys(this.params).sort();
 
+  var paramName;
+  var paramValue;
   for (var i = 0; i < params.length; ++i) {
-    var n = params[i];
-    str += "; " + n + "=";
+    paramName = params[i];
+    paramValue = this.params[paramName];
+    str += "; " + paramName + "=";
 
-    if (this.params[n].match(/^[!#$%&'*+\-.^_`|~0-9a-zA-Z]+$/)) {
-      str += this.params[n];
+    // quote paramName value if needed
+    if (paramValue.match(/^[!#$%&'*+\-.^_`|~0-9a-zA-Z]+$/)) {
+      str += paramValue;
     } else {
-      str += '"' + this.params[n].replace(/["\\]/g, function replace(a) {
+      str += '"' + paramValue.replace(/["\\]/g, function replace(a) {
         return '\\' + a;
       }) + '"';
     }
   }
-  if (typeof this.q === 'number' && this.q >= 0) {
-    // q is 1 or less. remove trailing 0's and decimal
-    var q = Math.min(this.q, 1).toFixed(3).replace(/0*$/, '').replace(/\.$/, '');
-    str += '; q=' + q;
+  if (this.hasOwnProperty('q')) {
+    str += '; q=' + this.q;
   }
 
   return str;
 };
 
-// Split a string by character, but ignore quoted parts and backslash-escaped
-// characters
+/*
+ * Split a string by character, but ignore quoted parts and backslash-escaped
+ * characters
+ *
+ * @param {string} str
+ * @param {string} delim
+ * @param {string} quote
+ *
+ * @returns {string}
+ */
 var splitQuotedString = MediaType.splitQuotedString = function splitQuotedString(str, delim, quote) {
   if (typeof str !== "string") {
     return [];
@@ -109,9 +175,8 @@ var splitQuotedString = MediaType.splitQuotedString = function splitQuotedString
   var start = 0;
   var offset = 0;
 
-  var findNextChar = function findNextChar(v, c, i, a) {
+  function findNextChar(v, c, i, a) {
     var p = str.indexOf(c, offset + 1);
-
     var result;
     if (p < 0) {
       result = v;
@@ -119,11 +184,10 @@ var splitQuotedString = MediaType.splitQuotedString = function splitQuotedString
       result = Math.min(p, v);
     }
     return result;
-  };
+  }
 
   while (offset >= 0) {
     offset = [delim, quote].reduce(findNextChar, 1 / 0);
-
     if (offset === 1 / 0) {
       break;
     }
@@ -148,20 +212,22 @@ var splitQuotedString = MediaType.splitQuotedString = function splitQuotedString
         break;
     }
   }
-
   res.push(str.substr(start).trim());
-
   return res;
 };
 
-// Split a list of content types found in an Accept header
-// Maybe use it like: splitContentTypes(request.headers.accept).map(parseMedia)
+/*
+ * Convenience method. Split a list of content types found in an Accept header
+ *
+ * @example
+ * splitContentTypes(request.headers.accept).map(parseMedia)
+ *
+ * @param {string} str
+ *
+ * @returns {string}
+ */
 MediaType.splitContentTypes = function splitContentTypes(str) {
   return MediaType.splitQuotedString(str, ",");
-};
-
-MediaType.parseMedia = function parseMedia(str) {
-  return new MediaType(str);
 };
 
 function normalizeTypes(types) {
@@ -190,11 +256,11 @@ function normalizeAccepts(accepts) {
  * Pick an ideal representation to send, given a list of representations to
  * choose from and the client-preferred list
  *
- * Algorithm: start with most specific accept, compare all representations to
- * that, starting with most specific. if match found, disable that accept from
- * future comparisons. keep record of candidate with highest multiplication of
- * accept.q and representation.q, use this as result when iteration is finished.
- * remove q and stringify. throw error if no acceptable type found
+ * Algorithm: start with most specific Accept, compare all Representations to
+ * that, starting with most specific. If match found, disable that Accept from
+ * future comparisons. Keep record of candidate with highest multiplication of
+ * Accept.q and Representation.q, using this as result when iteration is
+ * finished. Remove q and stringify. Throw error if no acceptable type found
  *
  * @param {string[]|MediaType[]}        representations Available representations
  * @param {string|string[]|MediaType[]} accepts         Client preferences
@@ -215,7 +281,7 @@ MediaType.select = function select(representations, accepts) {
         q: 0
       };
   accepts.map(function iterateTypes(accept) {
-    if (accept.type === '' || accept.type === undefined || accept.type === null) {
+    if (accept.type === '' || typeof accept.type === "undefined" || accept.type === null) {
       accept.type = "*/*";
     }
     representations.map(function iterateAccepts(available) {
@@ -228,15 +294,13 @@ MediaType.select = function select(representations, accepts) {
         acceptQ = Math.max(Math.min(1, accept.q || 1), 0);
         available.taken = true;
 
+        // Replace candidate if better match found
         if (typeQ * acceptQ > candidate.q) {
           candidate = {
             accept: accept,
             available: available,
             q: acceptQ * typeQ
           };
-          if (available.params) {
-            candidate.params = Object.keys(available.params).length;
-          }
         }
       }
     });
@@ -250,6 +314,11 @@ MediaType.select = function select(representations, accepts) {
 
 /**
  * Compare specificity of two types
+ *
+ * Useful for content type negotiation, as more specific types have higher
+ * priority for being selected.
+ * Algorithm: wildcard type is least specific, then wildcard subtype. If type
+ *   and subtype match, count the parameters, more parameters = more specific
  *
  * @param {MediaType} aArg
  * @param {MediaType} bArg
@@ -296,7 +365,8 @@ MediaType.specificityCmp = function specificityCmp(aArg, bArg) {
   return 0;
 };
 
-/* Determine if one media type is a subset of another
+/*
+ * Determine if one media type is a subset of another
  *
  * If a is a superset of b (b is smaller than a), return 1
  * If b is a superset of a, return -1
@@ -309,6 +379,7 @@ MediaType.specificityCmp = function specificityCmp(aArg, bArg) {
  * @returns {int|null}
  */
 MediaType.mediaCmp = function mediaCmp(a, b) {
+  // Normalize a and b as MediaType
   if (typeof a === "string") {
     a = MediaType.parseMedia(a);
   }
@@ -321,66 +392,88 @@ MediaType.mediaCmp = function mediaCmp(a, b) {
     return -1;
   }
 
-  var ac = (a.type || "").split("/");
-  var bc = (b.type || "").split("/");
+  var aParts = (a.type || "").split("/");
+  var bParts = (b.type || "").split("/");
+  var aType = aParts[0];
+  var bType = bParts[0];
+  var aSubtype = aParts[1];
+  var bSubtype = bParts[1];
 
-  if (ac[0] === "*" && bc[0] !== "*") {
+  // compare types
+  if (aType === "*" && bType !== "*") {
     return 1;
   }
 
-  if (ac[0] !== "*" && bc[0] === "*") {
+  if (aType !== "*" && bType === "*") {
     return -1;
   }
 
   // compare subtypes
-  if (ac[0] === bc[0]) {
-    if (ac[1] === "*" && bc[1] !== "*") {
-      return 1;
-    }
-    if (ac[1] !== "*" && bc[1] === "*") {
-      return -1;
-    }
+  if (aType === bType && aSubtype === "*" && bSubtype !== "*") {
+    return 1;
+  }
+  if (aType === bType && aSubtype !== "*" && bSubtype === "*") {
+    return -1;
   }
 
+  // If type/subtype does not match, disjoint
   if (a.type !== b.type) {
     return null;
   }
 
-  var ap = a.params || {};
-  var bp = b.params || {};
+  return paramsCmp(a.params || {}, b.params || {});
+};
 
-  var ak = Object.keys(ap);
-  var bk = Object.keys(bp);
+/*
+ * Determine if params for one media type is a subset of another set of params
+ *
+ * If a is a superset of b (b is smaller than a), return 1
+ * If b is a superset of a, return -1
+ * If they are the exact same, return 0
+ * If they are disjoint, return null
+ *
+ * @param {object} a
+ * @param {object} b
+ *
+ * @returns {int|null}
+ */
+function paramsCmp(a, b) {
+  var missingAParam = false;
+  var missingBParam = false;
+  var n;
 
-  if (ak.length < bk.length) {
-    return 1;
-  }
-
-  if (ak.length > bk.length) {
-    return -1;
-  }
-
-  var dir = 0;
-
-  for (var n in ap) {
-    if (ap[n] && typeof bp[n] === "undefined") {
-      if (dir < 0) {
-        return null;
-      }
-      dir = 1;
+  // Check if all params in `a` exist in `b`
+  for (n in a) {
+    if (!b.hasOwnProperty(n)) {
+      missingBParam = true;
+      continue;
     }
-
-    if (bp[n] && typeof ap[n] === "undefined") {
-      if (dir > 0) {
-        return null;
-      }
-      dir = -1;
-    }
-
-    if (ap[n] && bp[n] && ap[n] !== bp[n]) {
+    // If param exists in both but mismatched values, disjoint
+    if (a[n] !== b[n]) {
       return null;
     }
   }
-
-  return dir;
-};
+  // Check if all params in `b` exist in `a`
+  for (n in b) {
+    if (!a.hasOwnProperty(n)) {
+      missingAParam = true;
+      continue;
+    }
+    // If param exists in both but mismatched values, disjoint
+    if (a[n] !== b[n]) {
+      return null;
+    }
+  }
+  // If a is missing params from b and vice versa, disjoint
+  // e.g. a=text/html;p=1 b=text/html;s=1
+  if (missingAParam && missingBParam) {
+    return null;
+  }
+  if (missingAParam) {
+    return 1;
+  }
+  if (missingBParam) {
+    return -1;
+  }
+  return 0;
+}

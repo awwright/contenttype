@@ -61,6 +61,20 @@ describe('comparison', function tests() {
     var r = MediaType.mediaCmp(p, q);
     expect(r).to.equal(1);
   });
+
+  it('should compare multiple parameters', function test() {
+    var p = new MediaType('text/plain;p=2');
+    var q = new MediaType('text/plain;p=2;s=8');
+    var r = MediaType.mediaCmp(p, q);
+    expect(r).to.equal(1);
+  });
+
+  it('should compare multiple disjoint parameters', function test() {
+    var p = new MediaType('text/plain;p=5;s=8');
+    var q = new MediaType('text/plain;p=2');
+    var r = MediaType.mediaCmp(p, q);
+    expect(r).to.equal(null);
+  });
 });
 
 describe('specificity', function tests() {
