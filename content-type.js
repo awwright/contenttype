@@ -1,5 +1,7 @@
 // Licence: PUBLIC DOMAIN <http://unlicense.org/>
 // Author: Austin Wright <http://github.com/Acubed>
+//var typeIs = require('type-is');
+var errors = require('./errors');
 
 var MediaType = module.exports = function MediaType(s, p) {
   this.type = "";
@@ -51,10 +53,11 @@ MediaType.prototype.parseParameter = function parseParameter(s) {
   }
 
   // TODO Per http://tools.ietf.org/html/rfc7231#section-5.3.2 everything
-  //   after the q-value is accept-ext
+  //   after the q-value is classified as accept-extension
   //if (name === "q" && typeof this.q === "undefined") {
   if (name === "q") {
-    this.q = parseFloat(value);
+    // Limit q to 3 decimal places, per ABNF
+    this.q = parseFloat(Math.min(parseFloat(value), 1).toFixed(3));
   } else {
     if (value[0] === '"' && value[value.length - 1] === '"') {
       value = value.substr(1, value.length - 2).replace(/\\(.)/g, function replace(a, b) {
@@ -95,6 +98,9 @@ MediaType.prototype.toString = function toString() {
 // Split a string by character, but ignore quoted parts and backslash-escaped
 // characters
 var splitQuotedString = MediaType.splitQuotedString = function splitQuotedString(str, delim, quote) {
+  if (typeof str !== "string") {
+    return [];
+  }
   delim = delim || ";";
   quote = quote || '"';
 
@@ -158,104 +164,157 @@ MediaType.parseMedia = function parseMedia(str) {
   return new MediaType(str);
 };
 
-MediaType.sortByQuality = function sortByQuality(types) {
-  return types.sort(function sort(a, b) {
-    if (a.q === b.q) {
-      return 0;
+function normalizeTypes(types) {
+  var normalized = types;
+  if (types.length && typeof types[0] === "string") {
+    normalized = types.map(MediaType.parseMedia);
+  }
+  return normalized;
+}
+
+function normalizeAccepts(accepts) {
+  var normalized = accepts;
+  if (typeof accepts === "string") {
+    normalized = MediaType.splitContentTypes(accepts);
+  }
+  if (normalized.length && typeof normalized[0] === "string") {
+    normalized = normalized.map(MediaType.parseMedia);
+  }
+  if (!normalized.length) {
+    normalized = [MediaType.parseMedia('*/*')];
+  }
+  return normalized;
+}
+
+/**
+ * Pick an ideal representation to send, given a list of representations to
+ * choose from and the client-preferred list
+ *
+ * Algorithm: start with most specific accept, compare all representations to
+ * that, starting with most specific. if match found, disable that accept from
+ * future comparisons. keep record of candidate with highest multiplication of
+ * accept.q and representation.q, use this as result when iteration is finished.
+ * remove q and stringify. throw error if no acceptable type found
+ *
+ * @param {string[]|MediaType[]}        representations Available representations
+ * @param {string|string[]|MediaType[]} accepts         Client preferences
+ *
+ * @returns {string}
+ */
+MediaType.select = function select(representations, accepts) {
+  // Normalize to arrays of MediaTypes
+  representations = normalizeTypes(representations);
+  accepts = normalizeAccepts(accepts);
+  representations.sort(MediaType.specificityCmp);
+  accepts.sort(MediaType.specificityCmp);
+
+  var is,
+      typeQ,
+      acceptQ,
+      candidate = {
+        q: 0
+      };
+  accepts.map(function iterateTypes(accept) {
+    if (accept.type === '' || accept.type === undefined || accept.type === null) {
+      accept.type = "*/*";
     }
-
-    if (typeof a.q === "undefined" && typeof b.q !== "undefined") {
-      return -1;
-    }
-
-    if (typeof b.q === "undefined" && typeof a.q !== "undefined") {
-      return 1;
-    }
-
-    if (a.q > b.q) {
-      return 1;
-    } else if (a.q < b.q) {
-      return -1;
-    }
-    return 0;
-  });
-};
-
-MediaType.sortBySpecificity = function sortBySpecificity(types) {
-  return types.sort(function sort(a, b) {
-    var bitsA = a.type.split("/"),
-        bitsB = b.type.split("/");
-
-    if (bitsA[0] === "*" && bitsB[0] !== "*") {
-      return 1;
-    }
-
-    if (bitsB[0] === "*" && bitsA[0] !== "*") {
-      return -1;
-    }
-
-    if (bitsA[1] === "*" && bitsB[1] !== "*") {
-      return 1;
-    }
-
-    if (bitsB[1] === "*" && bitsA[1] !== "*") {
-      return -1;
-    }
-
-    var keysA = Object.keys(a.params),
-        keysB = Object.keys(b.params);
-
-    if (keysA.length < keysB.length) {
-      return 1;
-    }
-
-    if (keysB.length < keysA.length) {
-      return -1;
-    }
-
-    return 0;
-  });
-};
-
-MediaType.firstMatch = function firstMatch(availableTypes, acceptedTypes) {
-  for (var i = 0; i < acceptedTypes.length; ++i) {
-    for (var j = 0; j < availableTypes.length; ++j) {
-      var comparison = MediaType.mediaCmp(acceptedTypes[i], availableTypes[j]);
-
-      if (comparison !== null && comparison >= 0) {
-        return availableTypes[j];
+    representations.map(function iterateAccepts(available) {
+      if (available.taken) {
+        return;
       }
-    }
-  }
+      is = MediaType.mediaCmp(available, accept);
+      if (is !== null && is <= 0) {
+        typeQ = Math.max(Math.min(1, available.q || 1), 0);
+        acceptQ = Math.max(Math.min(1, accept.q || 1), 0);
+        available.taken = true;
 
-  return null;
+        if (typeQ * acceptQ > candidate.q) {
+          candidate = {
+            accept: accept,
+            available: available,
+            q: acceptQ * typeQ
+          };
+          if (available.params) {
+            candidate.params = Object.keys(available.params).length;
+          }
+        }
+      }
+    });
+  });
+  if (candidate.q === 0) {
+    throw new errors.UnacceptableError();
+  }
+  delete candidate.available.q;
+  return candidate.available.toString();
 };
 
-// Pick an ideal representation to send given a list of representations
-// to choose from and the client-preferred list
-MediaType.select = function select(availableTypes, acceptedTypes, options) {
-  options = options || {
-    sortAvailable: false,
-    sortAccepted: true
-  };
-
-  if (options.sortAvailable) {
-    availableTypes = MediaType.sortByQuality(MediaType.sortBySpecificity(availableTypes));
+/**
+ * Compare specificity of two types
+ *
+ * @param {MediaType} aArg
+ * @param {MediaType} bArg
+ *
+ * @returns {bool} -1 if `aArg` more specific than `bArg`, 0 if same, -1 if less
+ */
+MediaType.specificityCmp = function specificityCmp(aArg, bArg) {
+  var a = {};
+  var parts = bArg.type.split('/');
+  a.type = parts[0];
+  a.subtype = parts[1];
+  a.params = 0;
+  if (bArg.params) {
+    a.params = Object.keys(bArg.params).length;
   }
 
-  if (options.sortAccepted) {
-    acceptedTypes = MediaType.sortByQuality(MediaType.sortBySpecificity(acceptedTypes));
+  var b = {};
+  parts = aArg.type.split('/');
+  b.type = parts[0];
+  b.subtype = parts[1];
+  b.params = 0;
+  if (aArg.params) {
+    b.params = Object.keys(aArg.params).length;
   }
 
-  return MediaType.firstMatch(availableTypes, acceptedTypes);
+  if (a.type === "*" && b.type !== "*") {
+    return -1;
+  }
+  if (a.type !== "*" && b.type === "*") {
+    return 1;
+  }
+  if (a.subtype === "*" && b.subtype !== "*") {
+    return -1;
+  }
+  if (a.subtype !== "*" && b.subtype === "*") {
+    return 1;
+  }
+  if (a.params > b.params) {
+    return 1;
+  }
+  if (a.params < b.params) {
+    return -1;
+  }
+  return 0;
 };
 
-// Determine if one media type is a subset of another
-// If a is a superset of b (b is smaller than a), return 1
-// If b is a superset of a, return -1
-// If they are the exact same, return 0
-// If they are disjoint, return null
+/* Determine if one media type is a subset of another
+ *
+ * If a is a superset of b (b is smaller than a), return 1
+ * If b is a superset of a, return -1
+ * If they are the exact same, return 0
+ * If they are disjoint, return null
+ *
+ * @param {MediaType|string} a
+ * @param {MediaType|string} b
+ *
+ * @returns {int|null}
+ */
 MediaType.mediaCmp = function mediaCmp(a, b) {
+  if (typeof a === "string") {
+    a = MediaType.parseMedia(a);
+  }
+  if (typeof b === "string") {
+    b = MediaType.parseMedia(b);
+  }
   if (a.type === "*/*" && b.type !== "*/*") {
     return 1;
   } else if (a.type !== "*/*" && b.type === "*/*") {
@@ -271,6 +330,16 @@ MediaType.mediaCmp = function mediaCmp(a, b) {
 
   if (ac[0] !== "*" && bc[0] === "*") {
     return -1;
+  }
+
+  // compare subtypes
+  if (ac[0] === bc[0]) {
+    if (ac[1] === "*" && bc[1] !== "*") {
+      return 1;
+    }
+    if (ac[1] !== "*" && bc[1] === "*") {
+      return -1;
+    }
   }
 
   if (a.type !== b.type) {
