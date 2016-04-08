@@ -231,15 +231,18 @@ MediaType.splitContentTypes = function splitContentTypes(str) {
 
 function normalizeTypes(types) {
   var normalized = types;
-  if (types.length && typeof types[0] === "string") {
-    normalized = types.map(MediaType.parseMedia);
+  if (typeof types === "string") {
+    normalized = MediaType.splitContentTypes(types);
+  }
+  if (normalized.length && typeof normalized[0] === "string") {
+    normalized = normalized.map(MediaType.parseMedia);
   }
   return normalized;
 }
 
 function normalizeAccepts(accepts) {
   var normalized = accepts;
-  if (typeof accepts === "string") {
+  if (typeof accepts === "string" || typeof accepts === "undefined" || accepts === null) {
     normalized = MediaType.splitContentTypes(accepts);
   }
   if (normalized.length && typeof normalized[0] === "string") {

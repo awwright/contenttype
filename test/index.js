@@ -105,6 +105,44 @@ describe('specificity', function tests() {
   });
 });
 
+describe('splitting', function tests() {
+  it('should split "text/html, */*" into ["text/html", "*/*"]', function test() {
+    var p = MediaType.splitContentTypes("text/html, */*");
+    p.should.be.an.instanceOf(Array);
+    p.length.should.equal(2);
+    p.indexOf("text/html").should.not.equal(-1);
+    p.indexOf("*/*").should.not.equal(-1);
+  });
+
+  it("should split quoted strings containing semicolons and commas", function test() {
+    var p = MediaType.splitContentTypes("text/html, application/json;profile=\"a,b;c.json?d=1;f=2\";q=0.2, */*");
+    p.should.be.an.instanceOf(Array);
+    p.length.should.equal(3);
+    p.indexOf("text/html").should.not.equal(-1);
+    p.indexOf("application/json;profile=\"a,b;c.json?d=1;f=2\";q=0.2").should.not.equal(-1);
+    p.indexOf("*/*").should.not.equal(-1);
+  });
+
+  it('should split null into []', function test() {
+    var p = MediaType.splitContentTypes(null);
+    p.should.be.an.instanceOf(Array);
+    p.length.should.equal(0);
+  });
+
+  it('should split undefined into []', function test() {
+    var p = MediaType.splitContentTypes(undefined);
+    p.should.be.an.instanceOf(Array);
+    p.length.should.equal(0);
+  });
+
+  it("should split '' into ['']", function test() {
+    var p = MediaType.splitContentTypes('');
+    p.should.be.an.instanceOf(Array);
+    p.length.should.equal(1);
+    p.indexOf("").should.not.equal(-1);
+  });
+});
+
 describe('negotiation', function tests() {
   /*
    * from https://tools.ietf.org/html/rfc7231#section-5.3.2
@@ -121,6 +159,20 @@ describe('negotiation', function tests() {
       'text/html',
       'text/x-dvi'
     ];
+    var accept = 'text/plain; q=0.5, text/html, text/x-dvi; q=0.8, text/x-c';
+    var selected = (MediaType.select(
+      representations,
+      accept
+    )).toString();
+    selected.should.equal('text/html');
+  });
+
+  it('should select preferred media type when Accept and Representation args are arrays of MediaTypes', function test() {
+    var representations = [
+      'text/plain',
+      'text/html',
+      'text/x-dvi'
+    ];
     var accept = MediaType.splitContentTypes('text/plain; q=0.5, text/html, text/x-dvi; q=0.8, text/x-c');
     var selected = (MediaType.select(
       representations.map(MediaType.parseMedia),
@@ -129,13 +181,9 @@ describe('negotiation', function tests() {
     selected.should.equal('text/html');
   });
 
-  it('should select preferred media type when Accept arg is a string and representations arg is an array of strings', function test() {
-    var representations = [
-      'text/plain',
-      'text/html',
-      'text/x-dvi'
-    ];
-    var accept = 'text/plain; q=0.5, text/html, text/x-dvi; q=0.8, text/x-c';
+  it('should select preferred media type when Accept and Representation args are arrays of strings', function test() {
+    var representations = MediaType.splitContentTypes('text/plain, text/html, text/x-dvi');
+    var accept = MediaType.splitContentTypes('text/plain; q=0.5, text/html, text/x-dvi; q=0.8, text/x-c');
     var selected = (MediaType.select(
       representations,
       accept
@@ -158,10 +206,10 @@ describe('negotiation', function tests() {
       'text/x-dvi',
       'application/json'
     ];
-    var accept = MediaType.splitContentTypes('text/plain; q=0.5, text/html, text/x-dvi; q=0.8, text/x-c');
+    var accept = 'text/plain; q=0.5, text/html, text/x-dvi; q=0.8, text/x-c';
     var selected = (MediaType.select(
-      representations.map(MediaType.parseMedia),
-      accept.map(MediaType.parseMedia)
+      representations,
+      accept
     )).toString();
     selected.should.equal('text/x-dvi');
   });
@@ -189,10 +237,10 @@ describe('negotiation', function tests() {
       'text/html',
       'text/html;level=1'
     ];
-    var accept = MediaType.splitContentTypes('text/*, text/html, text/html;level=1, */*');
+    var accept = 'text/*, text/html, text/html;level=1, */*';
     var selected = (MediaType.select(
-      representations.map(MediaType.parseMedia),
-      accept.map(MediaType.parseMedia)
+      representations,
+      accept
     )).toString();
     selected.should.equal('text/html; level=1');
   });
@@ -208,37 +256,27 @@ describe('negotiation', function tests() {
       'text/html;level=1',
       'text/html;level=1;other=4'
     ];
-    var accept = MediaType.splitContentTypes('text/*, text/html, text/html;level=1, */*');
+    var accept = 'text/*, text/html, text/html;level=1, */*';
     var selected = (MediaType.select(
-      representations.map(MediaType.parseMedia),
-      accept.map(MediaType.parseMedia)
+      representations,
+      accept
     )).toString();
     selected.should.equal('text/html; level=1; other=4');
   });
 
   it('should select preferred type based on matching parameters', function test() {
-    var scenarios = [
-        {
-          representations: [
-            "text/html;level=2",
-            "text/html;level=3"
-          ],
-          expected: "text/html; level=3"
-        }
+    var representations = [
+      "text/html;level=2",
+      "text/html;level=3"
     ];
-    //var accept = MediaType.splitContentTypes('text/*;q=0.3, text/html;q=0.7, text/html;level=2;q=0.4');
-    var accept = MediaType.splitContentTypes('text/html;q=0.7, text/html;level=2;q=0.4');
+    var accept = 'text/html;q=0.7, text/html;level=2;q=0.4';
     var selected;
-    var scenario;
-    for (var i = 0; i < scenarios.length; i++) {
-      scenario = scenarios[i];
-      selected = (MediaType.select(
-        scenario.representations.map(MediaType.parseMedia),
-        accept.map(MediaType.parseMedia)
-      )).toString();
-      var errorString = "selected media type does not match expected for representations " + scenario.representations.join(',');
-      expect(selected, errorString).to.equal(scenario.expected);
-    }
+    selected = (MediaType.select(
+      representations,
+      accept
+    )).toString();
+    var errorString = "selected media type does not match expected for representations " + representations.join(',');
+    expect(selected, errorString).to.equal("text/html; level=3");
   });
 
   /*
@@ -316,14 +354,14 @@ describe('negotiation', function tests() {
           expected: "text/plain"
         }
     ];
-    var accept = MediaType.splitContentTypes('text/*;q=0.3, application/json;q=0.1, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*;q=0.5');
+    var accept = 'text/*;q=0.3, application/json;q=0.1, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*;q=0.5';
     var selected;
     var scenario;
     for (var i = 0; i < scenarios.length; i++) {
       scenario = scenarios[i];
       selected = (MediaType.select(
-        scenario.representations.map(MediaType.parseMedia),
-        accept.map(MediaType.parseMedia)
+        scenario.representations,
+        accept
       )).toString();
       var errorString = "selected media type does not match expected for representations " + scenario.representations.join(',');
       expect(selected, errorString).to.equal(scenario.expected);
@@ -341,10 +379,10 @@ describe('negotiation', function tests() {
       "text/plain",
       "image/jpeg; q=.75"
     ];
-    var accept = MediaType.splitContentTypes('text/html, text/plain, */*;q=0.1');
+    var accept = 'text/html, text/plain, */*;q=0.1';
     var selected = (MediaType.select(
-      representations.map(MediaType.parseMedia),
-      accept.map(MediaType.parseMedia)
+      representations,
+      accept
     )).toString();
     selected.should.equal('text/plain');
   });
@@ -354,10 +392,10 @@ describe('negotiation', function tests() {
       "text/plain; q=.5",
       "image/jpeg; q=.75"
     ];
-    var accept = MediaType.splitContentTypes('text/html;q=0.7, text/plain, */*;q=0.1');
+    var accept = 'text/html;q=0.7, text/plain, */*;q=0.1';
     var selected = (MediaType.select(
-      representations.map(MediaType.parseMedia),
-      accept.map(MediaType.parseMedia)
+      representations,
+      accept
     )).toString();
     selected.should.equal('text/html');
   });
@@ -367,10 +405,10 @@ describe('negotiation', function tests() {
       "text/plain; q=.5",
       "image/jpeg"
     ];
-    var accept = MediaType.splitContentTypes('text/html;q=0.7, text/plain, */*;q=0.1');
+    var accept = 'text/html;q=0.7, text/plain, */*;q=0.1';
     var selected = (MediaType.select(
-      representations.map(MediaType.parseMedia),
-      accept.map(MediaType.parseMedia)
+      representations,
+      accept
     )).toString();
     selected.should.equal('text/plain');
   });
@@ -388,10 +426,10 @@ describe('negotiation', function tests() {
       'text/x-dvi',
       'application/json'
     ];
-    var accept = MediaType.splitContentTypes('text/json; q=0.5, application/xml');
+    var accept = 'text/json; q=0.5, application/xml';
     var selected = (MediaType.select(
-      representations.map(MediaType.parseMedia),
-      accept.map(MediaType.parseMedia)
+      representations,
+      accept
     ));
     expect(selected).to.equal(null);
   });
@@ -402,10 +440,10 @@ describe('negotiation', function tests() {
       'text/x-dvi',
       'application/json'
     ];
-    var accept = MediaType.splitContentTypes('text/plain;level=1');
+    var accept = 'text/plain;level=1';
     var selected = (MediaType.select(
-      representations.map(MediaType.parseMedia),
-      accept.map(MediaType.parseMedia)
+      representations,
+      accept
     ));
     expect(selected).to.equal(null);
   });
@@ -422,10 +460,10 @@ describe('negotiation', function tests() {
       'text/x-dvi',
       'application/json'
     ];
-    var accept = MediaType.splitContentTypes('');
+    var accept = '';
     var selected = (MediaType.select(
-      representations.map(MediaType.parseMedia),
-      accept.map(MediaType.parseMedia)
+      representations,
+      accept
     )).toString();
     selected.should.equal('text/plain');
   });
@@ -442,10 +480,10 @@ describe('negotiation', function tests() {
       'text/x-dvi',
       'application/json'
     ];
-    var accept = MediaType.splitContentTypes(null);
+    var accept = null;
     var selected = (MediaType.select(
-      representations.map(MediaType.parseMedia),
-      accept.map(MediaType.parseMedia)
+      representations,
+      accept
     )).toString();
     selected.should.equal('text/plain');
   });
@@ -462,10 +500,10 @@ describe('negotiation', function tests() {
       'text/x-dvi',
       'application/json'
     ];
-    var accept = MediaType.splitContentTypes(undefined);
+    var accept;
     var selected = (MediaType.select(
-      representations.map(MediaType.parseMedia),
-      accept.map(MediaType.parseMedia)
+      representations,
+      accept
     )).toString();
     selected.should.equal('text/plain');
   });
