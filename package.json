@@ -2,7 +2,7 @@
   "name": "contenttype",
   "version": "2.0.0",
   "description": "Javascript/ECMAScript library for parsing Content-Type and Media/MIME type strings",
-  "main": "content-type.js",
+  "main": "contenttype.js",
   "scripts": {
     "test": "mocha -R spec"
   },
