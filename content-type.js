@@ -1,6 +1,5 @@
 // Licence: PUBLIC DOMAIN <http://unlicense.org/>
 // Author: Austin Wright <http://github.com/Acubed>
-var errors = require('./errors');
 
 /**
  * Constructor, creates new MediaType
@@ -306,7 +305,7 @@ MediaType.select = function select(representations, accepts) {
     });
   });
   if (candidate.q === 0) {
-    throw new errors.UnacceptableError();
+    return null;
   }
   delete candidate.available.q;
   return candidate.available.toString();

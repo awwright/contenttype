@@ -21,17 +21,12 @@ var representations = [
 ];
 
 app.use(function (req, res, next) {
-  try {
-    var representation = MediaType.select(representations, req.headers.accept);
-    res.rep = representation;
-  } catch (e) {
-    if (e.name === "UnacceptableError") {
-      res.status(e.statusCode); //406
-      res.json({error: "No valid content-type found for specified Accept header"});
-    } else {
-      throw e;
-    }
+  var representation = MediaType.select(representations, req.headers.accept);
+  if (representation === null) {
+    res.status(406);
+    res.json({error: "No valid content-type found for specified Accept header"});
   }
+  res.rep = representation;
   next();
 });
 

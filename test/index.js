@@ -5,8 +5,6 @@ require('should');
 var chai = require('chai');
 var expect = chai.expect;
 
-var errors = require('../errors');
-
 describe('parsing', function testSuite() {
   it('should parse q parameter as Float', function test() {
     var mediaType = new MediaType();
@@ -347,7 +345,7 @@ describe('negotiation', function tests() {
     var selected = (MediaType.select(
       representations.map(MediaType.parseMedia),
       accept.map(MediaType.parseMedia)
-    ) || 'None').toString();
+    )).toString();
     selected.should.equal('text/plain');
   });
   it("should prefer q=0.9 and q=0.7 to q=1 and q=0.5", function test() {
@@ -360,7 +358,7 @@ describe('negotiation', function tests() {
     var selected = (MediaType.select(
       representations.map(MediaType.parseMedia),
       accept.map(MediaType.parseMedia)
-    ) || 'None').toString();
+    )).toString();
     selected.should.equal('text/html');
   });
   it("should prefer q=1 and q=0.5 to q=0.7 and q=0.7", function test() {
@@ -373,7 +371,7 @@ describe('negotiation', function tests() {
     var selected = (MediaType.select(
       representations.map(MediaType.parseMedia),
       accept.map(MediaType.parseMedia)
-    ) || 'None').toString();
+    )).toString();
     selected.should.equal('text/plain');
   });
 
@@ -384,18 +382,18 @@ describe('negotiation', function tests() {
    * response which is acceptable according to the combined Accept field value,
    * then the server SHOULD send a 406 (not acceptable) response
    */
-  it('should throw error if no acceptable type found', function test() {
+  it('should select null if no acceptable type found', function test() {
     var representations = [
       'text/plain',
       'text/x-dvi',
       'application/json'
     ];
     var accept = MediaType.splitContentTypes('text/json; q=0.5, application/xml');
-    (MediaType.select.bind(
-      MediaType,
+    var selected = (MediaType.select(
       representations.map(MediaType.parseMedia),
       accept.map(MediaType.parseMedia)
-    )).should.throw(errors.UnacceptableError);
+    ));
+    expect(selected).to.equal(null);
   });
 
   it('should throw error if no acceptable type with parameters found', function test() {
@@ -405,11 +403,11 @@ describe('negotiation', function tests() {
       'application/json'
     ];
     var accept = MediaType.splitContentTypes('text/plain;level=1');
-    (MediaType.select.bind(
-      MediaType,
+    var selected = (MediaType.select(
       representations.map(MediaType.parseMedia),
       accept.map(MediaType.parseMedia)
-    )).should.throw(errors.UnacceptableError);
+    ));
+    expect(selected).to.equal(null);
   });
 
   /*
