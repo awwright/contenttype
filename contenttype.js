@@ -311,7 +311,7 @@ MediaType.select = function select(representations, accepts) {
     return null;
   }
   delete candidate.available.q;
-  return candidate.available.toString();
+  return candidate.available;
 };
 
 /**

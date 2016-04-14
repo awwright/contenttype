@@ -163,8 +163,9 @@ describe('negotiation', function tests() {
     var selected = (MediaType.select(
       representations,
       accept
-    )).toString();
-    selected.should.equal('text/html');
+    ));
+    selected.toString().should.equal('text/html');
+    selected.type.should.equal('text/html');
   });
 
   it('should select preferred media type when Accept and Representation args are arrays of MediaTypes', function test() {
