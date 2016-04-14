@@ -1,0 +1,29 @@
+{
+  "name": "contenttype",
+  "version": "2.0.0",
+  "description": "Javascript/ECMAScript library for parsing Content-Type and Media/MIME type strings",
+  "main": "contenttype.js",
+  "scripts": {
+    "test": "mocha -R spec"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Acubed/contenttype.git"
+  },
+  "keywords": [
+    "content-type",
+    "parse",
+    "http",
+    "header"
+  ],
+  "author": "Austin Wright <https://github.com/Acubed>",
+  "license": "Unlicense <http://unlicense.org/>",
+  "bugs": {
+    "url": "https://github.com/Acubed/contenttype/issues"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "mocha": "^1.21.4",
+    "should": "^4.0.4"
+  }
+}
