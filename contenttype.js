@@ -1,46 +1,109 @@
 // Licence: PUBLIC DOMAIN <http://unlicense.org/>
 // Author: Austin Wright <http://github.com/Acubed>
 
-function MediaType(s, p){
+
+/**
+ * Constructor, creates new MediaType
+ *
+ * @example
+ * new MediaType('text/html;l=3', { p: 4 });
+ * // MediaType { type: 'text/html', params: { l: '3', p: '4' } }
+ *
+ * @example
+ * new MediaType('text/html;l=3', 'p=4;l=5');
+ * // MediaType { type: 'text/html', params: { l: '5', p: '4' } }
+ *
+ * @param {string|MediaType} type   Media type
+ * @param {string|object}    params Parameters
+ */
+function MediaType(type, params){
 	this.type = '';
 	this.params = {};
-	if(typeof s=='string'){
-		var c = splitQuotedString(s);
-		this.type = c.shift();
-		for(var i=0; i<c.length; i++){
-			this.parseParameter(c[i]);
+	var stringArray,
+			i;
+
+	if(typeof type=='string'){
+		// Split by ';'. First part is type, the rest are params, or q
+		stringArray = splitQuotedString(type);
+		this.type = stringArray.shift();
+		for(i=0; i<stringArray.length; i++){
+			this.parseParameter(stringArray[i]);
 		}
-	}else if(s instanceof MediaType){
-		this.type = s.type;
-		this.q = s.q;
-		for(var n in s.params) this.params[n]=s.params[n];
+	}else if(type instanceof MediaType){
+		this.type = type.type;
+		this.q = type.q;
+		for(var i in type.params) this.params[i]=type.params[i];
 	}
-	if(typeof p=='string'){	 
-		var c = splitQuotedString(p);
-		for(var i=0; i<c.length; i++){
-			this.parseParameter(c[i]);
+
+	// Override parameters (if any) with 2nd arg
+	if(typeof params=='string'){
+		stringArray = splitQuotedString(params);
+		for(i=0; i<stringArray.length; i++){
+			this.parseParameter(stringArray[i]);
 		}
-	}else if(typeof p=='object'){
-		for(var n in p) this.params[n]=p[n];
+	}else if(typeof params=='object'){
+		for(var i in params){
+			if (i === "q") {
+				this.q = parseQ(params[i]);
+			}else{
+				this.params[i] = parseParamValue(params[i]);
+			}
+		}
 	}
 }
+
+/**
+ * Parse parameter value consistently
+ *
+ * @param {string} value
+ *
+ * @returns {string}
+ */
+function parseParamValue(value) {
+	// ?
+	if (value[0] === '"' && value[value.length - 1] === '"') {
+		value = value.substr(1, value.length - 2).replace(/\\(.)/g, function replace(a, b) {
+			return b;
+		});
+	}
+	return value + "";
+}
+
+/**
+ * Ensure q is between 0 and 1. Limit to 3 decimal places, per ABNF
+ *
+ * @param {string|number} q
+ *
+ * @returns {float}
+ */
+function parseQ(q) {
+	var parsed = parseFloat(Math.min(parseFloat(q), 1).toFixed(3));
+	return parsed;
+}
+
+/**
+ * Parse parameters from a string
+ *
+ * @param {string} string
+ */
 MediaType.prototype.parseParameter = function parseParameter(s){
 	var param = s.split('=',1);
 	var name = param[0].trim();
 	var value = s.substr(param[0].length+1).trim();
 	if(!value || !name) return;
-	// TODO Per http://tools.ietf.org/html/rfc7231#section-5.3.2 everything
-	//   after the q-value is accept-ext
+
 	if(name=='q'){
-		this.q=parseFloat(value);
+		this.q=parseQ(value);
 	}else{
-		if(value[0]=='"' && value[value.length-1]=='"'){
-			value = value.substr(1, value.length-2);
-			value = value.replace(/\\(.)/g, function(a,b){return b;});
+		value = parseParamValue(value);
+		// Per http://tools.ietf.org/html/rfc7231#section-5.3.2 everything after the
+		// q-value is accept-ext (ignore for now)
+		if (!this.hasOwnProperty('q')) {
+			this.params[name]=value;
 		}
-		this.params[name]=value;
 	}
 }
+
 MediaType.prototype.toString = function toString(){
 	var str = this.type;
 	var params = Object.keys(this.params).sort();
@@ -55,7 +118,7 @@ MediaType.prototype.toString = function toString(){
 	}
 	if(typeof this.q==='number' && this.q>=0){
 		var q = Math.min(this.q, 1).toFixed(3).replace(/0*$/, '').replace(/\.$/, '');
-		str += ';q=' + q;
+		str += '; q=' + q;
 	}
 	return str;
 }
